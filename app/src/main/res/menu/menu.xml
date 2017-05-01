@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+
+    <item
+        android:id="@+id/itemFile"
+        android:icon="@drawable/iconfile"
+        android:title="File"
+        app:showAsAction="always" />
+    <item
+        android:id="@+id/itemFigure"
+        android:icon="@drawable/iconfigure"
+        android:title="Figure"
+        app:showAsAction="always" />
+    <item
+        android:id="@+id/itemText"
+        android:icon="@drawable/icontext"
+        android:title="Text"
+        app:showAsAction="always" />
+    <item
+        android:id="@+id/itemDraw"
+        android:icon="@drawable/icondraw"
+        android:title="Draw"
+        app:showAsAction="always" />
+    <item
+        android:id="@+id/itemBack"
+        android:icon="@drawable/button_back"
+        android:title="File"
+        app:showAsAction="always" />
+</menu>

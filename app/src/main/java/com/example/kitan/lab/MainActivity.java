@@ -3,39 +3,49 @@ package com.example.kitan.lab;
 import android.content.Context;
 import android.content.Intent;
 import android.support.v7.app.AppCompatActivity;
+
 import android.os.Bundle;
+import android.os.Environment;
+
+import android.view.View;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.Display;
+import android.view.MotionEvent;
+
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Color;
-import android.view.View;
-import android.widget.Toast;
 import android.graphics.Path;
-import android.widget.EditText;
-import android.widget.TextView;
-import android.view.MotionEvent;
 import android.graphics.RectF;
-import android.widget.Button;
-import android.widget.ImageView;
+import android.graphics.Matrix;
+import android.graphics.BitmapFactory;
 import android.graphics.Bitmap;
+
+import android.widget.Toast;
+import android.widget.EditText;
+import android.widget.Button;
+
 import android.provider.MediaStore.Images.Media;
 import android.net.Uri;
+import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
-import android.os.Environment;
-import android.content.Intent;
+
 
 
 
 public class MainActivity extends AppCompatActivity{
 
+//-----------------------------------Class for Draw Array------------------------------->
     public class DrawItem {
         Path path;
         String text;
         String color;
         int chose;
+        float textSize;
         float x;
         float y;
 
@@ -45,39 +55,44 @@ public class MainActivity extends AppCompatActivity{
             path = p;
         }
 
-        public DrawItem(int ch, String col, String t, float x1, float y1) {
+        public DrawItem(int ch, String col, String t, float x1, float y1, float sz) {
             chose = ch;
             color = col;
             text = t;
             x = x1;
             y = y1;
+            textSize = sz;
         }
     }
 
-    TextView tv;
+//-----------------------------------Index and check variables ------------------------------->
+    int index = 0;
+    int check = 0;
+    int checkFigure = 0;
+    int imgCheck = 0;
+    int imgSaveCheck = 0;
+
+//-----------------------------------Variables for draw data------------------------------->
     float x;
     float y;
-
     float xOld;
     float yOld;
     float width = 10, height = 10;
-
-    int check = 0;
-    int checkFigure = 0;
-    int max = 1000;
     float radius;
-
     String color;
     String text;
+    float textSize;
 
-    int index = 0;
+//-----------------------------------Variables for draw array------------------------------->
+    int max = 1000;
     Path drawPath;
-
     DrawItem[] drawItemArr = new DrawItem[max];
 
+//-----------------------------------Variables for image------------------------------->
     private static final int REQUEST = 1;
-    private ImageView image;
-    Uri selectedImage;
+    Bitmap img;
+    String fName;
+
 //-----------------------------------CHANGE PATH ARRAY------------------------------->
 //----------------------------------------------------------------->
 //---------------------------------------------------->
@@ -90,11 +105,11 @@ public class MainActivity extends AppCompatActivity{
         }
     }
 
-    public void addTextColorArr(String text, String color, float x1, float y1) {
+    public void addTextColorArr(String text, String color, float x1, float y1, float sz) {
         if(index == max){
             Toast.makeText(MainActivity.this, "Can`t draw more", Toast.LENGTH_SHORT).show();
         }else{
-            drawItemArr[index] = new DrawItem(2, color, text, x1, y1);
+            drawItemArr[index] = new DrawItem(2, color, text, x1, y1, sz);
             index ++;
         }
     }
@@ -158,7 +173,6 @@ public class MainActivity extends AppCompatActivity{
 
     public void drawFigureTriangle() {
         Path path = new Path();
-        RectF rectf;
 
         x = x - width/2;
         y = y - height/2;
@@ -217,7 +231,7 @@ public class MainActivity extends AppCompatActivity{
 //---------------------------------------------------------->
 //-------------------------------------------->
     public void drawText() {
-        addTextColorArr(text, color, x, y);
+        addTextColorArr(text, color, x, y, textSize);
         setContentView(new MainActivity.DrawArray(this));
     }
 
@@ -276,11 +290,11 @@ public class MainActivity extends AppCompatActivity{
         drawPath.addCircle(x, y, radius,Path.Direction.CW);
         setContentView(new MainActivity.DrawDraw(this));
     }
+
     public void drawEnd() {
         addPathColorArr(drawPath, color);
         setContentView(new MainActivity.DrawArray(this));
     }
-
 
 //-----------------------------------CREATE ACTIVITY---------------------------------->
 //---------------------------------------------------------->
@@ -289,7 +303,6 @@ public class MainActivity extends AppCompatActivity{
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater inflater = getMenuInflater();
         inflater.inflate(R.menu.menu, menu);
-
         return super.onCreateOptionsMenu(menu);
     }
 
@@ -305,8 +318,8 @@ public class MainActivity extends AppCompatActivity{
                 }
                 return true;
             case R.id.itemFile:
-                Intent intentFile = new Intent(this, File.class);
-                startActivity(intentFile);
+                check = 0;
+                setContentView(R.layout.activity_file);
                 Toast.makeText(MainActivity.this, "File", Toast.LENGTH_SHORT).show();
                 return true;
             case R.id.itemFigure:
@@ -333,10 +346,8 @@ public class MainActivity extends AppCompatActivity{
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        image = (ImageView) findViewById(R.id.imageView1);
-
+        setContentView(R.layout.activity_main);
     }
-
 
 //-----------------------------------DRAW CLASS----------------------->
 //---------------------------------------------------------->
@@ -344,6 +355,7 @@ public class MainActivity extends AppCompatActivity{
     class DrawArray extends View {
         Paint p;
         Path path;
+
         public DrawArray(Context context) {
             super(context);
             p = new Paint();
@@ -352,33 +364,37 @@ public class MainActivity extends AppCompatActivity{
 
         @Override
         public void onDraw(Canvas canvas) {
-            Bitmap img = null;
-//
-//        if (true) {
-//
-//            try {
-//                img = Media.getBitmap(getContentResolver(), selectedImage);
-//            } catch (FileNotFoundException e) {
-//                e.printStackTrace();
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            }
-//           image.setImageBitmap(img);
-//        }
-//            image.setImageBitmap(img);
+            Display display = getWindowManager().getDefaultDisplay();
+            int widthD = display.getWidth();
+            int heightD = display.getHeight();
+
+            if (imgCheck == 1) {
+
+                Matrix m = new Matrix();
+                m.setScale((float) widthD / img.getWidth(), (float) (heightD - 112) / img.getHeight());
+                canvas.drawBitmap(img, m, p);
+            }
+
             for(int i = 0; i < index; i++){
                 p.setColor(Color.parseColor(drawItemArr[i].color));
-                p.setTextSize(30);
                 if(drawItemArr[i].chose == 1){
                     canvas.drawPath(drawItemArr[i].path, p);
                 }else{
+                    p.setTextSize(drawItemArr[i].textSize);
                     canvas.drawText(drawItemArr[i].text, drawItemArr[i].x, drawItemArr[i].y, p);
                 }
+            }
+
+            if(imgSaveCheck == 1){
+                callDrawView();
+                imgSaveCheck = 0;
             }
         }
 
     }
+
     class DrawDraw extends View {
+
         Paint p;
         Path path;
         public DrawDraw(Context context) {
@@ -389,12 +405,22 @@ public class MainActivity extends AppCompatActivity{
 
         @Override
         public void onDraw(Canvas canvas) {
+            if (imgCheck == 1) {
+                Display display = getWindowManager().getDefaultDisplay();
+                int widthD = display.getWidth();
+                int heightD = display.getHeight();
+
+                Matrix m = new Matrix();
+                m.setScale((float) widthD / img.getWidth(), (float) (heightD - 112) / img.getHeight());
+                canvas.drawBitmap(img, m, p);
+            }
+
             for(int i = 0; i < index; i++){
                 p.setColor(Color.parseColor(drawItemArr[i].color));
-                p.setTextSize(30);
                 if(drawItemArr[i].chose == 1){
                     canvas.drawPath(drawItemArr[i].path, p);
                 }else{
+                    p.setTextSize(drawItemArr[i].textSize);
                     canvas.drawText(drawItemArr[i].text, drawItemArr[i].x, drawItemArr[i].y, p);
                 }
             }
@@ -404,6 +430,72 @@ public class MainActivity extends AppCompatActivity{
         }
     }
 
+    class SaveFile extends View {
+        Paint paint;
+        Bitmap bitmap;
+
+        public SaveFile(Context context) {
+            super(context);
+            paint = new Paint();
+
+            Display display = getWindowManager().getDefaultDisplay();
+            int widthD = display.getWidth();
+            int heightD = display.getHeight();
+
+            bitmap = Bitmap.createBitmap(widthD, heightD - 112, Bitmap.Config.RGB_565);
+            Canvas canvas = new Canvas(bitmap);
+
+            if (imgCheck == 1) {
+                Matrix m = new Matrix();
+                m.setScale((float) widthD / img.getWidth(), (float) (heightD - 112) / img.getHeight());
+                canvas.drawBitmap(img, m, paint);
+            }else{
+                Bitmap bmpIcon = BitmapFactory.decodeResource(getResources(), R.drawable.white);
+                bmpIcon = Bitmap.createScaledBitmap(bmpIcon, widthD, heightD, true);
+                canvas.drawBitmap(bmpIcon, 0,0, paint);
+            }
+
+
+            for(int i = 0; i < index; i++){
+                paint.setColor(Color.parseColor(drawItemArr[i].color));
+                if(drawItemArr[i].chose == 1){
+                    canvas.drawPath(drawItemArr[i].path, paint);
+                }else{
+                    paint.setTextSize(drawItemArr[i].textSize);
+                    canvas.drawText(drawItemArr[i].text, drawItemArr[i].x, drawItemArr[i].y, paint);
+                }
+            }
+
+            try {
+
+                File imgFile = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES) , fName + ".jpg");
+                if (!imgFile.exists()){
+                    imgFile.createNewFile();
+                }
+
+                FileOutputStream fos = new FileOutputStream(imgFile);
+
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos);
+                Toast.makeText(MainActivity.this, "File saved", Toast.LENGTH_SHORT).show();
+
+                fos.close();
+            } catch (Exception e) {
+            }
+
+
+        }
+
+        @Override
+        protected void onDraw(Canvas canvas) {
+
+            canvas.drawBitmap(bitmap, 0, 0, paint);
+        }
+
+    }
+
+    void callDrawView() {
+        setContentView(new SaveFile(this));
+    }
 
 //-----------------------------------TOUCH EVENT----------------------->
 //---------------------------------------------------------->
@@ -416,7 +508,7 @@ public class MainActivity extends AppCompatActivity{
         y = e.getY() - 120;
 
         switch (e.getAction()) {
-            case MotionEvent.ACTION_DOWN: // нажатие
+            case MotionEvent.ACTION_DOWN:
                 chooseDraw(1);
                 break;
             case MotionEvent.ACTION_MOVE:
@@ -500,6 +592,7 @@ public class MainActivity extends AppCompatActivity{
     public void btnTextOnClick(View v) {
 
         try {
+            textSize = Float.parseFloat( ((EditText) findViewById(R.id.editTextSize)).getText().toString() );
             color = ((EditText) findViewById(R.id.editTextRGB)).getText().toString();
             text = ((EditText) findViewById(R.id.editTextString)).getText().toString();
             Color.parseColor(color);
@@ -524,7 +617,7 @@ public class MainActivity extends AppCompatActivity{
         }
     }
 
-//-----------------------------------DRAW FILE----------------------->
+//-----------------------------------FILE BUTTONS----------------------->
 //---------------------------------------------------------->
     public void btnOpenFileOnClick(View v) {
         try {
@@ -539,14 +632,34 @@ public class MainActivity extends AppCompatActivity{
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
 
-        Bitmap img = null;
+        img = null;
 
         if (requestCode == REQUEST && resultCode == RESULT_OK) {
-           selectedImage = data.getData();
-       }
-        super.onActivityResult(requestCode, resultCode, data);
+            Uri selectedImage = data.getData();
+            try {
+                img = Media.getBitmap(getContentResolver(), selectedImage);
+                imgCheck = 1;
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        setContentView(new MainActivity.DrawArray(this));
     }
+
+    public void btnSaveFileOnClick(View v) {
+        fName = ((EditText) findViewById(R.id.editTextFileName)).getText().toString();
+        imgSaveCheck = 1;
+        setContentView(new MainActivity.DrawArray(this));
+    }
+
+    public void btnChooseNameFileSave(View v) {
+        setContentView(R.layout.activity_save);
+    }
+
 }
 
 
